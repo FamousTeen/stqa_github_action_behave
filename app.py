@@ -16,6 +16,24 @@ def get_next_id():
     next_id += 1
     return current_id
 
+
+def sanitize_pet_payload(payload):
+    """Removes empty string/None values so partial updates don't wipe fields."""
+    if not payload:
+        return {}
+
+    cleaned = {}
+    for key, value in payload.items():
+        if value is None:
+            continue
+        if isinstance(value, str):
+            if value.strip() == "":
+                continue
+            cleaned[key] = value
+            continue
+        cleaned[key] = value
+    return cleaned
+
 # Route for the homepage
 @app.route('/')
 def home():
@@ -43,7 +61,11 @@ def handle_pets():
     if request.method == 'GET':
         category = request.args.get('category')
         if category:
-            matching_pets = [pet for pet in pets.values() if pet['category'] == category]
+            normalized_category = category.strip().lower()
+            matching_pets = [
+                pet for pet in pets.values()
+                if pet.get('category', '').lower() == normalized_category
+            ]
             return jsonify(matching_pets)
         
         return jsonify(list(pets.values()))
@@ -57,7 +79,7 @@ def update_pet(pet_id):
     if pet_id not in pets:
       return jsonify({"message": f"Pet with ID {pet_id} not found"}), 404
     
-    data = request.get_json()
+    data = sanitize_pet_payload(request.get_json())
     pet = pets[pet_id]
     pet.update(data)
     pets[pet_id] = pet

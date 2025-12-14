@@ -107,6 +107,14 @@ margin-top: 1rem;
     const searchButton = document.getElementById('search-btn');
     const listAllButton = document.getElementById('list-all-btn');
 
+    petAvailableInput.addEventListener('change', () => {
+        petAvailableInput.dataset.interacted = 'true';
+    });
+
+    petGenderInput.addEventListener('change', () => {
+        petGenderInput.dataset.interacted = 'true';
+    });
+
     function displayMessage(message, isSuccess = true) {
         flashMessage.textContent = message;
         flashMessage.style.color = isSuccess ? 'green' : 'red';
@@ -136,6 +144,12 @@ margin-top: 1rem;
         };
     }
 
+    function resetFormFields() {
+        petForm.reset();
+        delete petAvailableInput.dataset.interacted;
+        delete petGenderInput.dataset.interacted;
+    }
+
     // Event listeners for CRUD operations
     createButton.addEventListener('click', () => {
         const newPet = getPetData();
@@ -147,7 +161,7 @@ margin-top: 1rem;
         .then(response => {
             if (response.ok) {
                 displayMessage('Success');
-                petForm.reset();
+                resetFormFields();
                 fetch('/pets').then(res => res.json()).then(displayPets);
             } else {
                 displayMessage('Failed to create pet.', false);
@@ -161,7 +175,27 @@ margin-top: 1rem;
             displayMessage('Pet ID is required for updating.', false);
             return;
         }
-        const updatedData = getPetData();
+        const updatedData = {};
+        if (petNameInput.value.trim()) {
+            updatedData.name = petNameInput.value.trim();
+        }
+        if (petCategoryInput.value.trim()) {
+            updatedData.category = petCategoryInput.value.trim();
+        }
+        if (petBirthdayInput.value) {
+            updatedData.birthday = petBirthdayInput.value;
+        }
+        if (petGenderInput.dataset.interacted === 'true') {
+            updatedData.gender = petGenderInput.value;
+        }
+        if (petAvailableInput.dataset.interacted === 'true') {
+            updatedData.available = petAvailableInput.checked;
+        }
+        if (Object.keys(updatedData).length === 0) {
+            displayMessage('Provide at least one field to update.', false);
+            return;
+        }
+
         fetch(`/pets/${petId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -170,7 +204,7 @@ margin-top: 1rem;
         .then(response => {
             if (response.ok) {
                 displayMessage('Success');
-                petForm.reset();
+                resetFormFields();
                 fetch('/pets').then(res => res.json()).then(displayPets);
             } else {
                 displayMessage('Failed to update pet.', false);
@@ -188,7 +222,7 @@ margin-top: 1rem;
         .then(response => {
             if (response.status === 204) {
                 displayMessage('Success');
-                petForm.reset();
+                resetFormFields();
                 fetch('/pets').then(res => res.json()).then(displayPets);
             } else {
                 displayMessage('Failed to delete pet.', false);
@@ -199,7 +233,7 @@ margin-top: 1rem;
     // Event listeners for search and list
     searchButton.addEventListener('click', () => {
         const category = petCategoryInput.value;
-        fetch(`/pets?category=${category}`)
+        fetch(`/pets?category=${encodeURIComponent(category)}`)
             .then(response => response.json())
             .then(data => {
                 displayMessage('Success');
